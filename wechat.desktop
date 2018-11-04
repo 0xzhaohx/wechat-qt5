@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=0.5
+Type=Application
+Name=Wechat
+Encoding=UTF-8
+GenericName=Wechat 0.6
+Comment=A Client of Wechat
+Exec=/opt/wechat/wechat.sh
+Terminal=false
+Icon=/opt/wechat/icons/hicolor/72x72/apps/wechat.png
+Categories=Application;
+StartupNotify=true
+Name[zh_CN]=微信
+Name[zh_TW]=微信
