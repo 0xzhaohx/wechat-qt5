@@ -20,14 +20,6 @@ import threading
 import re
 from time import sleep
 import time
-from com.ox11.wechat import property
-from msg import Msg
-from com.ox11.wechat.ui.emotion import Emotion
-from com.ox11.wechat.ui.MemberListWidget import MemberListWidget
-from com.ox11.wechat.ui.about import About
-from com.ox11.wechat.ui.delegate.labeldelegate import LabelDelegate
-from config import WechatConfig
-import wechatutil
 
 import xml.dom.minidom
 import json
@@ -36,9 +28,17 @@ import logging
 from PyQt5.QtGui import QIcon, QCursor, QTextImageFormat,QStandardItemModel
 from PyQt5.QtWidgets import QLabel,QDialog,QFileDialog,QMenu,QVBoxLayout,QAction,QMainWindow
 from PyQt5 import QtGui, uic
-    
 from PyQt5.QtCore import QSize, pyqtSlot, pyqtSignal, QPoint
     
+import wechatutil
+from msg import Msg
+from com.ox11.wechat import property
+from com.ox11.wechat.ui.emotion import Emotion
+from com.ox11.wechat.ui.MemberListWidget import MemberListWidget
+from com.ox11.wechat.ui.about import About
+from com.ox11.wechat.ui.delegate.labeldelegate import LabelDelegate
+from config import WechatConfig
+from com.ox11.wechat.ui.ContactListWindow import ContactListWindow
 '''
 reload(sys)
 
@@ -69,7 +69,16 @@ class WeChatWin(QMainWindow, WeChatWindow):
     '''
     
     initialed = pyqtSignal()
+    '''
+    收到消息信号
+    '''
     messageReceived = pyqtSignal(str)
+    '''
+    TODO NEVER USED
+    '''
+    membersChanged = pyqtSignal(str)
+    
+    membersConfirmed = pyqtSignal(str)
     
     def __init__(self,wechatweb,qApp):
         QMainWindow.__init__(self)
@@ -109,6 +118,16 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
         self.memberListWidget = None
         self.showImageDialog = None
+        #设置成员列表为隐
+        self.membersWidget.setVisible(False)
+        self.membersTable.setIconSize(QSize(50,50))
+        self.membersTable.verticalHeader().setDefaultSectionSize(50)
+        self.membersTable.horizontalHeader().setDefaultSectionSize(50)
+        self.membersTableModel = QStandardItemModel(0,4)
+        self.membersTable.setModel(self.membersTableModel)
+        self.membersTable.clicked.connect(self.member_click)
+        #self.membersConfirmed.connect(self.getSelectedUsers)
+        
         self.friendsWidget.setVisible(False)
         self.publicWidget.setVisible(False)
         self.profileWidget.setVisible(False)
@@ -146,6 +165,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.emotionButton.clicked.connect(self.select_emotion)
         self.selectImageFileButton.clicked.connect(self.select_document)
         self.currentChatUser.clicked.connect(self.current_chat_user_click)
+        #显示成员列表
         self.showMemberButton.clicked.connect(self.showMembers)
         self.addMenu4SendButton()
         self.addMenu4SettingButton()
@@ -196,6 +216,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
         response_data = self.wechatweb.webwx_create_chatroom(member_list)
         print("webwx_create_chatroom response:%s"%response_data)
+        if not response_data:
+            logging.error("创建失败")
+            return
         data_dict = json.loads(response_data)
         if data_dict["BaseResponse"]["Ret"] == 0:
             chat_room_name = data_dict["ChatRoomName"]
@@ -718,10 +741,28 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 else:
                     self.default_msg_handler(message)
                 #break
-
+    '''
+    处理
+    '''
     def showMembers(self):
-        self.current_chat_user_click()
+        #self.current_chat_user_click()
+        if self.membersWidget.isHidden():
+            self.membersWidget.setVisible(True)
+        else:
+            self.membersWidget.setVisible(False)
+        self.aaaa()
+            
+    def aaaa(self):
+        memebers = [self.current_chat_contact]
+        #如果是群，则要显示所有的群成员
+        if self.current_chat_contact['UserName'].find('@@') >= 0:
+            memebers = self.current_chat_contact["MemberList"]
+        #更新
+        self.updateMembers(memebers)
+            
         
+    '''
+    '''
     def current_chat_user_click(self):
         memebers = [self.current_chat_contact]
         if self.current_chat_contact['UserName'].find('@@') >= 0:
@@ -832,7 +873,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         _msg['id'] = ""
         _user = {}
         _user['head_class']=("divMyHead" if user["UserName"] == user_name else "divotherhead")
-        _user['head_img']="%s\\%s.jpg"%(self.config.customFace + user_name)
+        _user['head_img']="%s\\%s.jpg"%(self.config.customFace , user_name)
         _msg['user']=_user
         _body = {}
         _body['content_class']= ("triangle-right right" if user["UserName"] == user_name else "triangle-left left")
@@ -1507,3 +1548,62 @@ class WeChatWin(QMainWindow, WeChatWindow):
             if loop is False:
                 break
             sleep(15)
+            
+    '''''''''''''''''''''''''''''''''''''''''''''''
+    
+    '''''''''''''''''''''''''''''''''''''''''''''''
+    def updateMembers(self,members):
+        #self.members = members
+        self.membersTableModel.removeRows(0, self.membersTableModel.rowCount())
+        self.appendRow(members)
+        
+    def initinal_member_list_widget(self,member_list):
+        #self.membersTableModel.setHorizontalHeaderItem(0,QStandardItem("0000"))
+        self.appendRow(member_list, self.membersTableModel)
+        self.membersTable.setModel(self.membersTableModel)
+        self.membersTable.setIconSize(QSize(40,40))
+        self.membersTable.clicked.connect(self.member_click)
+        
+    def member_click(self):
+        print("member_clicked in member_click()")
+        self.memberListWindow = ContactListWindow(self.wechatweb.getFriends(),self)
+        self.memberListWindow.resize(400,600)
+        self.memberListWindow.membersConfirmed.connect(self.getSelectedUsers)
+        self.memberListWindow.show()
+    
+    '''
+    向membersTableWidget中填充信息
+    '''
+    def appendRow(self,members):
+        ###############
+        cells = []
+        item = QtGui.QStandardItem(("+"))
+        cells.append(item)
+        for member in members[0:3]:
+            user_head_icon = "%s\\%s.jpg"%(self.config.customFace, member['UserName']+".jpg")
+            if not os.path.exists(user_head_icon):
+                user_head_icon = './resource/images/webwxgeticon.png'#self.default_member_icon
+            dn = member['DisplayName'] or member['NickName']
+            if not dn:
+                dn = member['NickName']
+            item = QtGui.QStandardItem(QIcon(user_head_icon),wechatutil.unicode(dn))
+            cells.append(item)
+        self.membersTableModel.appendRow(cells)
+        i = 3
+        members_len = len(members)
+        if members_len > 19:
+            members_len = 19
+        while i < members_len:
+            cells = []
+            for member in members[i:i+4]:
+                user_head_icon = "%s\\%s.jpg"%(self.config.customFace, member['UserName']+".jpg")
+                if not os.path.exists(user_head_icon):
+                    user_head_icon = './resource/images/webwxgeticon.png'#self.default_member_icon
+                dn = member['DisplayName'] or member['NickName']
+                if not dn:
+                    dn = member['NickName']
+                item = QtGui.QStandardItem(QIcon(user_head_icon),wechatutil.unicode(dn))
+                cells.append(item)
+            i = i + 4
+            self.membersTableModel.appendRow(cells)
+            
