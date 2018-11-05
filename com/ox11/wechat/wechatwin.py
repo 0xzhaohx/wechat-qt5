@@ -80,6 +80,8 @@ class WeChatWin(QMainWindow, WeChatWindow):
     
     membersConfirmed = pyqtSignal(str)
     
+    customFaceDownloadSuccess = pyqtSignal(str)
+    
     def __init__(self,wechatweb,qApp):
         QMainWindow.__init__(self)
         WeChatWindow.__init__(self)
@@ -136,6 +138,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.init_public()
         self.emotionscodeinitial()
         self.initialed.connect(self.process_blocked_messages)
+        self.initialed.connect(self.startDwonloadCustomFace)
         
         self.chatAreaWidget.setVisible(False)
         self.chatsWidget.setItemDelegate(LabelDelegate())
@@ -169,6 +172,8 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.showMemberButton.clicked.connect(self.showMembers)
         self.addMenu4SendButton()
         self.addMenu4SettingButton()
+        
+        self.customFaceDownloadSuccess.connect(self.updateCustomFace)
         #
         self.initialed.emit()
     
@@ -295,13 +300,16 @@ class WeChatWin(QMainWindow, WeChatWindow):
         logging.debug('start process blocked_messages_pool')
         for message in self.blocked_messages_pool:
             self.msg_handle(message)
-    
+    '''
+    登陆成功之后调用此方法，主要用于取得部分聊天用户，
+    如果返回用户中有群，则要用包含所有群用台的一个数组去调用batch_get_contact，以获取群成员列表数据
+    '''
     def wxinitial(self):
+        #返回的仅仅是部分数据，用户不全
         wx_init_response = self.wechatweb.webwx_init()
         #self.wechatweb.webwxstatusnotify()
         self.setupwxuser()
-        
-        #do downlaod icon
+        #获取所有的联系人
         self.wechatweb.webwx_get_contact()
         self.synccheck(loop=False)
         #TODO download the head image or icon of contact
@@ -319,9 +327,15 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 group['ChatRoomId'] = ''
                 groups.append(group)
                 #doanload head image
-                ##self.wechatweb.webwx_get_head_img(user_name,head_img_url)
+                if os.path.exists("%s\\%s.jpg"%(self.config.customFace,user_name)):
+                    logging.debug("custom face of chatroom %s is exist"%user_name)
+                else:
+                    self.wechatweb.webwx_get_head_img(user_name,head_img_url)
             elif user_name.startswith('@'):
-                ##self.wechatweb.webwx_get_icon(user_name,head_img_url)
+                if os.path.exists("%s\\%s.jpg"%(self.config.customFace,user_name)):
+                    logging.debug("custom face of %s is exist"%user_name)
+                else:
+                    self.wechatweb.webwx_get_icon(user_name,head_img_url)
                 pass
             else:
                 pass
@@ -329,6 +343,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             'Count': len(groups),
             'List': groups
         }
+        #第一次调用
         self.batch_get_contact(data=params)
     
     def addMenu4SendButton(self):
@@ -387,30 +402,23 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         for contact in response['ContactList']:
             user_name = contact['UserName']
-            head_img_url = contact['HeadImgUrl']
-            if not user_name or not head_img_url:
+            if not user_name:
                 continue
-            image = '%s\heads\contact\%s.jpg'%(self.config.getAppHome(),user_name)
-            #下載聯天室圖像
-            if not os.path.exists(image):
-                self.wechatweb.webwx_get_head_img(user_name,head_img_url)
-            else:
-                logging.warning("%s is already exist"%image)
             
             #如果群没有名字，则取前2个成员名字的组合作为群名称
             if not contact["NickName"] and not contact["DisplayName"]:
-                t_names = []
+                displayNames = []
                 for _member in contact["MemberList"][:2]:
-                    t_names.append(_member['DisplayName'] or _member['NickName'])
+                    displayNames.append(_member['DisplayName'] or _member['NickName'])
                         
-                contact["DisplayName"] = "、".join(t_names)
+                contact["DisplayName"] = "、".join(displayNames)
             #把聯天室加入聯系人列表對象
             for member in self.wechatweb.getFriends():
                 exist = False
                 if contact["UserName"] == member["UserName"]:
                     exist = True
-                    if not member["NickName"] and not member["DisplayName"] and t_names:
-                        member["DisplayName"]= "、".join(t_names)
+                    if not member["NickName"] and not member["DisplayName"] and displayNames:
+                        member["DisplayName"]= "、".join(displayNames)
                     break
             if exist is False:
                 self.wechatweb.appendFriend(contact)
@@ -483,7 +491,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             if user_head_image.load(self.config.getDefaultIcon()):
                 self.headImageLabel.setPixmap(QtGui.QPixmap.fromImage(user_head_image).scaled(40, 40))
 
-    def code_emotion(self,msg):
+    def codeEmotion(self,msg):
         imagePattern=re.compile(r'src="([.*\S]*\.gif)"',re.I)
         ppattern = re.compile(r'<p style=".*\S">(.+?)</p>', re.I)
         pimages = []
@@ -562,6 +570,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         cells.append(user_name_item)
         
         user_head_icon = "%s\\%s.jpg"%(self.config.customFace, user_name)
+        if not os.path.exists(user_head_icon):
+            user_head_icon = "./resource/images/default.png"
+        
         item = QtGui.QStandardItem(QIcon(user_head_icon),"")
         cells.append(item)
         
@@ -626,7 +637,6 @@ class WeChatWin(QMainWindow, WeChatWindow):
             group_contact_list.append(member)
         group_contact_list.sort(key=lambda mm: mm['RemarkPYInitial'] or mm['PYInitial'])
         #group_contact_list.sort(key=lambda mm: mm['RemarkPYQuanPin'] or mm['PYQuanPin'])
-
         for member in group_contact_list:#.sort(key=lambda m: m['PYInitial'])
             self.append_friend(member)
             
@@ -816,9 +826,6 @@ class WeChatWin(QMainWindow, WeChatWindow):
                     self.avater_label.setPixmap(QtGui.QPixmap.fromImage(user_head_image).scaled(132, 132))
             
             self.nickname_label.setText(wechatutil.unicode(contact['NickName']))
-            print(contact['Signature'])
-            if 'Signature' in contact:
-                print(contact['Signature'])
             self.signature_label.setText(wechatutil.unicode(contact['Signature']) if ('Signature' in contact)  else "")
             self.remark_label.setText(wechatutil.unicode(contact['RemarkName']))
             self.province_label.setText(wechatutil.unicode(contact['RemarkName']))
@@ -890,7 +897,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         rr = re.search(r'<img src="([.*\S]*\.gif)"',msg_html,re.I)
         msg_body = ""
         if rr:
-            pimages = self.code_emotion(msg_html)
+            pimages = self.codeEmotion(msg_html)
             for pimage in pimages:
                 p = pimage["p"]
                 msg_body+=p
@@ -1075,7 +1082,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         st = time.strftime("%Y-%m-%d %H:%M", time.localtime(createTime) if createTime else time.localtime())
         msg_timestamp = ('%s %s') % (userName, st)
         return wechatutil.unicode(msg_timestamp)
-    
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    #    MESSAGE PROCESS HANDLER 
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     def default_msg_handler(self,msg):
         '''
         #默認的消息處理handler
@@ -1151,9 +1160,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
         from_user_display_name = self.get_user_display_name(msg)
         format_msg = self.msg_timestamp(from_user_display_name,msg["CreateTime"])
-        '''
-        #:如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
-        '''
+        #
+        #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
+        #
         from_user_name = msg['FromUserName']
         if from_user_name == self.wechatweb.getUser()['UserName']:
             from_user_name = msg['ToUserName']
@@ -1170,9 +1179,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
             pass
         from_user_display_name = self.get_user_display_name(msg)
         format_msg = self.msg_timestamp(from_user_display_name,msg["CreateTime"])
-        '''
+        #
         #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
-        '''
+        #
         from_user_name = msg['FromUserName']
         if from_user_name == self.wechatweb.getUser()['UserName']:
             from_user_name = msg['ToUserName']
@@ -1193,9 +1202,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
             
         format_msg = self.msg_timestamp(from_user_display_name,message["CreateTime"])
-        '''
+        #
         #:如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
-        '''
+        #
         from_user_name = message['FromUserName']
         if from_user_name == self.wechatweb.getUser()['UserName']:
             from_user_name = message['ToUserName']
@@ -1231,9 +1240,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         format_msg = self.msg_timestamp(from_user_display_name,message["CreateTime"])
         msg_id = message['MsgId']
         self.wechatweb.webwx_get_msg_img(msg_id)
-        '''
+        #
         #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
-        '''
+        #
         from_user_name = message['FromUserName']
         if from_user_name == self.wechatweb.getUser()['UserName']:
             from_user_name = message['ToUserName']
@@ -1324,9 +1333,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         from_user_display_name = self.get_user_display_name(msg)
         format_msg = self.msg_timestamp(from_user_display_name,msg["CreateTime"])
         
-        '''
+        #
         #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
-        '''
+        #
         if self.current_chat_contact and user_name == self.current_chat_contact['UserName']:
             self.messages.append(format_msg)
             self.messages.append(wechatutil.unicode(('%s %s %s')%(title,desc,app_url)))
@@ -1355,9 +1364,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
         messages.append(message)
         self.messages_pool[cache_key] = messages
         #TODO ADD TIPS
-        '''
+        #
         #增加消息數量提示（提昇此人在會話列表中的位置）
-        '''
+        #
         exist = False#此人是否在會話列表中
         for row in range(row_count):
             index = self.chatsModel.index(row,0)
@@ -1436,10 +1445,10 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 #如果消息的發送者和登陸人一致，那麼上比消息有可能是通過其他設备發送，那麼有取ToUserName,才能顯示正确
                 if from_user_name == self.wechatweb.getUser()['UserName']:
                     from_user_name = message['ToUserName']
-            '''
+            #
             #没有選擇和誰對話或者此消息的發送人和當前的對話人不一致，則把消息存放在message_cache中;
             #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
-            '''
+            #
             if (not self.current_chat_contact) or from_user_name != self.current_chat_contact['UserName']:
                 self.put_message_cache(from_user_name,message)
             else:
@@ -1517,7 +1526,38 @@ class WeChatWin(QMainWindow, WeChatWindow):
             
     def keyPressEvent(self,event):
         print("keyPressEvent")
+        
+    def startDwonloadCustomFace(self):
+        timer = threading.Timer(1, self.downloadCustomFace)
+        timer.setDaemon(True)
+        timer.start()
     
+    '''
+    當UI顯示出來之後异步下載所有的custom face,發送信號更新
+    '''
+    def downloadCustomFace(self):
+        logging.debug("do downloadCustomFace()")
+        for contact in self.wechatweb.getFriends():
+            user_name = contact['UserName']
+            head_img_url = contact['HeadImgUrl']
+            if not user_name or not head_img_url:
+                continue
+            image = '%s\\%s.jpg'%(self.config.customFace,user_name)
+            #下載聯天室圖像
+            if not os.path.exists(image):
+                logging.info("Downloading %s"%image)
+                self.wechatweb.webwx_get_head_img(user_name,head_img_url)
+                self.customFaceDownloadSuccess.emit(user_name)
+            else:
+                logging.warning("%s is already exist"%image)
+    
+    def updateCustomFace(self,contact):
+        print("updateCustomFace:")
+        print(contact)
+        
+    '''
+    同步消息主循環
+    '''
     def synccheck(self,loop=True):
         '''
         :see webwx_sync_process
