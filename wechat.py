@@ -54,15 +54,19 @@ class WeChatLauncher(QDialog, LauncherWindow):
         
         self.weChatWeb = WeChatWeb()
         self.config = WechatConfig()
-        self.loggingclear()
+        self.clean_log()
         logging.basicConfig(filename=(WeChatLauncher.LOG_FILE)%(self.config.getAppHome()),filemode='w',level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
         self.setupUi(self)
         self.setWindowIcon(QIcon("resource/icons/hicolor/32x32/apps/wechat.png"))
         self.setWindowIconText("WeChatWin 0.5")
-        self.launcher_thread = WeChatLauncherThread(self,self.weChatWeb)
+        self.launcher_thread = WeChatLauncherThread(self)
         self.generate_qrcode()
-        self.launcher_thread.start()
+        #self.launcher_thread.start()
         self.load_qr_code_image()
+        #use threading.timer
+        self.login_timer = threading.Timer(0, self.login)
+        self.login_timer.setDaemon(True)
+        self.login_timer.start()
 
     def set_qr_timeout(self):
         WeChatLauncher.timeout = True
@@ -72,12 +76,13 @@ class WeChatLauncher(QDialog, LauncherWindow):
         qr_image = QtGui.QImage()
         if qr_image.load(qrcode_path):
             self.qrLabel.setPixmap(QtGui.QPixmap.fromImage(qr_image))
-            timer = threading.Timer(25, self.set_qr_timeout)
-            timer.start()
+            self.time_out_timer = threading.Timer(25, self.set_qr_timeout)
+            self.time_out_timer.start()
         else:
             pass
 
     def login(self):
+        #wait4login會一直等，直到用户扫描，如果扫描了，則一直等待在手機端確認
         code = self.weChatWeb.wait4login()
         if "200" == code:
             WeChatLauncher.login_state = True
@@ -91,25 +96,32 @@ class WeChatLauncher(QDialog, LauncherWindow):
     def generate_qrcode(self):
         self.weChatWeb.generate_qrcode()
 
-    def loggingclear(self):
+    def clean_log(self):
         if os.path.exists(WeChatLauncher.LOG_FILE%self.config.getAppHome()):
             with open(WeChatLauncher.LOG_FILE%self.config.getAppHome(),'w') as lf:
                 lf.seek(0)
                 lf.truncate()
                 logging.debug(time.time())
+                
+    def closeEvent(self,event):
+        self.login_timer.cancel()
+        self.time_out_timer.cancel()
+        print("closed")
 
 class WeChatLauncherThread(threading.Thread):
 
-    def __init__(self,launcher,weChatWeb):
+    def __init__(self,launcher):
         threading.Thread.__init__(self,name='wechat launcher thread')
         self.setDaemon(True)
         self.launcher = launcher
-        self.weChatWeb = weChatWeb
+        #self.weChatWeb = weChatWeb
 
     def run(self):
+        print("run")
         while(False == WeChatLauncher.timeout == WeChatLauncher.login_state):
             if(WeChatLauncher.exitt):
-                break
+                print("exit")
+                sys.exit(0)
             self.launcher.login()
             
             time.sleep(2)
@@ -132,6 +144,7 @@ def main():
             main()
     else:
         WeChatLauncher.exitt=True
+        print("in main %d"%exit_code)
         sys.exit(exit_code)
         
 def relogin():
