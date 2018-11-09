@@ -16,12 +16,12 @@ from PyQt5.QtWidgets import QTableView,QVBoxLayout,QDialog,QPushButton
 from PyQt5.QtCore import QSize, pyqtSignal
 import wechatutil
 
-class ContactListWindow(QDialog):
+class ContactsWindow(QDialog):
     WIDTH = 600
     membersConfirmed = pyqtSignal(str)
     
     def __init__(self,member_list,parent = None):
-        super(ContactListWindow,self).__init__(parent)
+        super(ContactsWindow,self).__init__(parent)
         self.setModal(True)
         self.user_home = os.path.expanduser('~')
         self.app_home = self.user_home + '/.wechat/'
@@ -43,7 +43,7 @@ class ContactListWindow(QDialog):
         self.confirm = QPushButton(wechatutil.unicode("確定"),self)
         self.membersTableModel = QStandardItemModel(0,2)
         self.membersTableModel.itemChanged.connect(self.itemChanged)
-        self.initinal_member_list_widget()
+        self.initinit_member_list_widget()  
         mainLayout=QVBoxLayout()
         mainLayout.addWidget(self.membersTable)
         mainLayout.addWidget(self.confirm)
@@ -63,7 +63,7 @@ class ContactListWindow(QDialog):
         else:
             self.confirm.setText(wechatutil.unicode("確定"))
             
-    def initinal_member_list_widget(self):
+    def init_member_list_widget(self):
         self.append_row(self.members, self.membersTableModel)
         self.membersTable.setModel(self.membersTableModel)
         self.membersTable.setIconSize(QSize(40,40))

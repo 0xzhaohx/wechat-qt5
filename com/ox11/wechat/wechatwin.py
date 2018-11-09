@@ -36,10 +36,10 @@ from message import Message
 from config import WechatConfig
 from com.ox11.wechat import property
 from com.ox11.wechat.ui.emotion import Emotion
-from com.ox11.wechat.ui.MemberListWidget import MemberListWidget
+from com.ox11.wechat.ui.MembersWidget import MembersWidget
 from com.ox11.wechat.ui.about import About
 from com.ox11.wechat.ui.delegate.labeldelegate import LabelDelegate
-from com.ox11.wechat.ui.ContactListWindow import ContactListWindow
+from com.ox11.wechat.ui.ContactsWindow import ContactsWindow
 from user_manager import UserManager
 from message_manager import MessageManager
 '''
@@ -53,6 +53,8 @@ qtCreatorFile = "resource/ui/wechatwin-0.6.1.ui"
 WeChatWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 class WeChatWin(QMainWindow, WeChatWindow):
+    
+    window_list = []
 
     I18N = "resource/i18n/resource.properties"
     
@@ -85,7 +87,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
     
     customFaceDownloadSuccess = pyqtSignal(str)
     
-    def __init__(self,wechatweb,qApp):
+    def __init__(self,wechatweb):
         QMainWindow.__init__(self)
         WeChatWindow.__init__(self)
         self.setAcceptDrops(True)
@@ -98,7 +100,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.blocked_messages_pool = []
         self.prepare4Environment()
         self.wechatweb = wechatweb
-        self.qApp=qApp
+        #self.qApp=qApp
         self.setupUi(self)
         self.setWindowIcon(QIcon("resource/icons/hicolor/32x32/apps/wechat.png"))
         #user manager
@@ -372,6 +374,8 @@ class WeChatWin(QMainWindow, WeChatWindow):
         menu.addAction(notifySwitchAction)
         soundSwitchAction = QAction(wechatutil.unicode("關閉聲音"),self)
         menu.addAction(soundSwitchAction)
+        contactManageAction = QAction(wechatutil.unicode("聯系人管理"),self)
+        menu.addAction(contactManageAction)
         logoutAction = QAction(wechatutil.unicode("退出"),self)
         menu.addAction(logoutAction)
         aboutAction = QAction(wechatutil.unicode("關於"),self)
@@ -379,7 +383,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.settingButton.setMenu(menu)
         
         aboutAction.triggered.connect(self.showAbout)
-        logoutAction.triggered.connect(self.do_logout)
+        logoutAction.triggered.connect(self.logout)
         
     def showAbout(self):
         about = About(self)
@@ -388,17 +392,6 @@ class WeChatWin(QMainWindow, WeChatWindow):
     def init_emotion_code(self):
         self.emotionscode = property.parse(WeChatWin.I18N).properties or {}
         
-    def relogin(self):
-        print("relogin..............")
-        self.qApp.exit(888)
-        
-    def do_logout(self):
-        self.relogin()
-        '''
-        print("logout..............")
-        sys.exit(0)
-        '''
-    
     def batch_get_contact(self,data=None):
         params = data
         response = self.wechatweb.webwx_batch_get_contact(params)
@@ -469,7 +462,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             return False
         if path.endswith("jpg") or path.endswith("jpeg") or path.endswith("png"):
             return True
-    
+    '''
     def mousePressEvent(self, event):
         #重写Event事件，用以处理成员列表隠藏
         print("event")
@@ -484,6 +477,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             #super(Button,self).dropEvent(event)
             pass
         #return QWidget.mousePressEvent(event)
+    '''
     
     def dropEvent(self, event):
         #print("dropEvent")
@@ -799,7 +793,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         :desc 处厘显示成员列表方法
         '''
-        #self.current_chat_user_click()
+        self.current_chat_user_click()
         if self.membersWidget.isHidden():
             self.membersWidget.setVisible(True)
         else:
@@ -813,36 +807,43 @@ class WeChatWin(QMainWindow, WeChatWindow):
             memebers = self.current_chat_contact["MemberList"]
         #更新
         self.updateMembers(memebers)
-            
         
+    def calculate_members_widget_size(self):
+        #rect包含了窗口的整个的高度和宽度
+        frame_geometry = self.frameGeometry()
+        geometry = self.geometry()
+        #member_x=主窗口的x()+䜃窗口的WIDTH
+        member_x = self.x()+frame_geometry.width()
+        member_y = self.y()#MembersWidget.WIDTH
+        member_width = MembersWidget.WIDTH
+        member_height = geometry.height()
+        return (member_x,member_y,member_width,member_height)
+    
     def current_chat_user_click(self):
         '''
-        :desc 处厘显示成员列表方法
+        :desc 显示成员列表方法
         '''
         memebers = [self.current_chat_contact]
         if self.current_chat_contact['UserName'].find('@@') >= 0:
             memebers = self.current_chat_contact["MemberList"]
         if self.memberListWidget:
-            #print("visible ddd%s:"+str(self.memberListWidget.isHidden()))
             if self.memberListWidget.isHidden():
-                rect = self.geometry()
-                #update memberlist
-                self.memberListWidget.updatemembers(memebers)
-                self.memberListWidget.resize(QSize(MemberListWidget.WIDTH,rect.height()+self.frameGeometry().height()-self.geometry().height()))
-                self.memberListWidget.move(self.frameGeometry().x()+self.frameGeometry().width(), self.frameGeometry().y())
+                (member_x, member_y,member_width,member_height) = self.calculate_members_widget_size()
+                #update memberslist
+                self.memberListWidget.update_members(memebers)
+                
+                self.memberListWidget.resize(member_width,member_height)
+                self.memberListWidget.move(member_x, member_y)
                 self.memberListWidget.show()
             else:
                 self.memberListWidget.hide()
         else:
-            rect = self.geometry()
-            print(rect.left(), rect.top())
-            print(self.frameGeometry())
-            print(rect.width(), rect.height())
-            
-            self.memberListWidget = MemberListWidget(memebers,self.user_manager.get_contacts(),self)
-            self.memberListWidget.resize(QSize(MemberListWidget.WIDTH,rect.height()+self.frameGeometry().height()-self.geometry().height()))
-            self.memberListWidget.move(self.frameGeometry().x()+self.frameGeometry().width(), self.frameGeometry().y())
-            
+            self.memberListWidget = MembersWidget(memebers,self.user_manager.get_contacts(),self)
+            (member_x, member_y,member_width,member_height) = self.calculate_members_widget_size()
+            self.memberListWidget.resize(member_width,member_height)
+            self.memberListWidget.move(member_x, member_y)
+            #update memberslist
+            self.memberListWidget.update_members(memebers)
             self.memberListWidget.membersChanged.connect(self.getSelectedUsers)
             self.memberListWidget.show()
             
@@ -1568,8 +1569,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
                     else:
                         print(ffile)
     def to_chat(self):
-        '''點擊傳消息按鈕
-        把此人加入Chat列表，同時顯示
+        '''
+        #點擊傳消息按鈕
+        #把此人加入Chat列表，同時顯示
         '''
         user_name = self.user_name_label.text()
         print("to_chat user_name %s"%(user_name))
@@ -1607,14 +1609,29 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 logging.warning("%s is already exist"%image)
     
     def updateCustomFace(self,contact):
-        print("updateCustomFace:")
         print(contact)
+        row_will_to_update = -1
+        row_count = self.chatsModel.rowCount()
+        for row in range(row_count):
+            index = self.chatsModel.index(row,0)
+            user_name_o = self.chatsModel.data(index)
+            ''' Python2
+            user_name = user_name_o.toString()
+            '''
+            user_name = user_name_o
+            if user_name and user_name == contact:
+                row_will_to_update = row
+                break;
         
-    '''
-    同步消息主循環
-    '''
+        if row_will_to_update >= 0:
+            print("row %d will be updateCustomFace:"%row_will_to_update)
+            custom_face = "%s\\%s.jpg"%(self.config.customFace,contact)
+            item = QtGui.QStandardItem(QIcon(custom_face),"")
+            self.chatsModel.setItem(row, 1, item)
+        
     def synccheck(self,loop=True):
         '''
+        #同步消息主循環
         :see webwx_sync_process
         '''
         while (True):
@@ -1652,7 +1669,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.membersTableModel.removeRows(0, self.membersTableModel.rowCount())
         self.appendRow(members)
         
-    def initinal_member_list_widget(self,member_list):
+    def init_member_list_widget(self,member_list):
         #self.membersTableModel.setHorizontalHeaderItem(0,QStandardItem("0000"))
         self.appendRow(member_list, self.membersTableModel)
         self.membersTable.setModel(self.membersTableModel)
@@ -1661,15 +1678,15 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
     def member_click(self):
         print("member_clicked in member_click()")
-        self.memberListWindow = ContactListWindow(self.user_manager.get_contacts(),self)
+        self.memberListWindow = ContactsWindow(self.user_manager.get_contacts(),self)
         self.memberListWindow.resize(400,600)
         self.memberListWindow.membersConfirmed.connect(self.getSelectedUsers)
         self.memberListWindow.show()
     
-    '''
-    向membersTableWidget中填充信息
-    '''
     def appendRow(self,members):
+        '''
+        #向membersTableWidget中填充信息
+        '''
         ###############
         cells = []
         item = QtGui.QStandardItem(("+"))
@@ -1701,4 +1718,20 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 cells.append(item)
             i = i + 4
             self.membersTableModel.appendRow(cells)
+            
+    ''''''''''''''''''''''''''''''''''''''''''''''''
+    ##处理注销、重登陆
+    ''''''''''''''''''''''''''''''''''''''''''''''''
+    def relogin(self):
+        self.close()
+        from wechat import WeChatLauncher
+        launcher = WeChatLauncher()
+        launcher.setWindowTitle("ddddddddddddddddddd")
+        if QDialog.Accepted == launcher.exec_():
+            window = WeChatWin(launcher.weChatWeb)
+            self.window_list.append(window)#这句一定要写，不然无法重新登录
+            window.show()
+        
+    def logout(self):
+        self.relogin()
             

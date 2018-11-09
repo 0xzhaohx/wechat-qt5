@@ -90,6 +90,7 @@ class WeChatLauncher(QDialog, LauncherWindow):
             code = self.weChatWeb.wait4login(0)
             WeChatLauncher.login_state = (True if "200" == code else False)
         logging.debug("code is %s"%code)
+        print("code is %s"%code)
         if WeChatLauncher.login_state:
             self.accept()
 
@@ -107,7 +108,7 @@ class WeChatLauncher(QDialog, LauncherWindow):
         self.login_timer.cancel()
         self.time_out_timer.cancel()
         print("closed")
-
+'''
 class WeChatLauncherThread(threading.Thread):
 
     def __init__(self,launcher):
@@ -125,6 +126,7 @@ class WeChatLauncherThread(threading.Thread):
             self.launcher.login()
             
             time.sleep(2)
+'''
 
 def main():
     #QtGui.QTextCodec.setCodecForTr(QtGui.QTextCodec.codecForName("utf8"))
@@ -133,11 +135,13 @@ def main():
     if getOSName() == "Windows":
         logging.warning("The OS name is Windows,will be exit!")
     launcher = WeChatLauncher()
-    launcher.show()
-    exit_code = 0;
+    #launcher.show()
+    #exit_code = 0;
     if QDialog.Accepted == launcher.exec_():
-        window = WeChatWin(launcher.weChatWeb,app)
+        window = WeChatWin(launcher.weChatWeb)
         window.show()
+        sys.exit(app.exec_())
+        '''
         exit_code = app.exec_()
         if(exit_code == 888):
             sys.exit(exit_code)
@@ -146,10 +150,8 @@ def main():
         WeChatLauncher.exitt=True
         print("in main %d"%exit_code)
         sys.exit(exit_code)
+        '''
         
-def relogin():
-    main()
-
 if __name__ =="__main__":
     main()
         
