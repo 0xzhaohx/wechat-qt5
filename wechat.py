@@ -12,15 +12,15 @@ import threading
 #from time import sleep
 import time
 import logging
-
-from com.ox11.wechat.wechatwin import WeChatWin
-from wechatweb import WeChatWeb
 import platform
 
 from PyQt5.Qt import QIcon
 from PyQt5 import QtGui, uic
-from config import WechatConfig
 from PyQt5.QtWidgets import QApplication,QDialog,QMainWindow
+
+from wechatweb import WeChatWeb
+from config import WechatConfig
+from com.ox11.wechat.wechatwin import WeChatWin
 
 qtCreatorFile = "resource/ui/wechat-1.0.ui"
 
@@ -59,7 +59,7 @@ class WeChatLauncher(QDialog, LauncherWindow):
         self.setupUi(self)
         self.setWindowIcon(QIcon("resource/icons/hicolor/32x32/apps/wechat.png"))
         self.setWindowIconText("WeChatWin 0.5")
-        self.launcher_thread = WeChatLauncherThread(self)
+        #self.launcher_thread = WeChatLauncherThread(self)
         self.generate_qrcode()
         #self.launcher_thread.start()
         self.load_qr_code_image()

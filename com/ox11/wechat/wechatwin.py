@@ -143,7 +143,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.init_chat_contacts()
         self.init_friends()
         self.init_public()
-        self.emotionscodeinitial()
+        self.init_emotion_code()
         self.initialed.connect(self.process_blocked_messages)
         self.initialed.connect(self.startDwonloadCustomFace)
         
@@ -200,7 +200,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             mainLayout = QVBoxLayout()
             image_label = QLabel()
             s_image = QtGui.QImage()
-            user_icon = self.config.get + self.wechatweb.getUser()['UserName'] + ".jpg"
+            user_icon = self.config.get + self.user_manager.get_user()['UserName'] + ".jpg"
             if s_image.load(user_icon):
                 image_label.setPixmap(QtGui.QPixmap.fromImage(s_image))
             mainLayout.addWidget(image_label)
@@ -241,9 +241,9 @@ class WeChatWin(QMainWindow, WeChatWindow):
             batch_response = self.wechatweb.webwx_batch_get_contact(data)
             if batch_response['Count'] and batch_response['Count'] > 0:
                 new_contact = batch_response['ContactList'][0]
-                remark_name = ("%s,%s,%s")%(self.wechatweb.getUser()["NickName"],self.current_chat_contact["NickName"],"")
+                remark_name = ("%s,%s,%s")%(self.wechatweb.user_manager()["NickName"],self.current_chat_contact["NickName"],"")
                 new_contact["RemarkName"]=remark_name
-                self.wechatweb.appendFriend(new_contact)
+                self.user_manager.append_chat_contact(new_contact)
                 self.wechatweb.webwx_get_head_img(new_contact["UserName"], new_contact["HeadImgUrl"])
                 self.append_contact_row(new_contact,self.chatsModel,action="INSERT",row=0)
     
@@ -313,15 +313,21 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #如果返回用户中有群，则要用包含所有群用台的一个数组去调用batch_get_contact，以获取群成员列表数据
         #返回的仅仅是部分数据，用户不全，其他的数据要在界面显示之后再加载，
         wx_init_response = self.wechatweb.webwx_init()
+        #初始化user_manger中的__user
+        self.user_manager.set_user(wx_init_response["User"])
+        mini_chat_list = wx_init_response['ContactList']
+        self.user_manager.set_chat_list(mini_chat_list)
+        
         #self.wechatweb.webwxstatusnotify()
         self.setupwxuser()
         #获取所有的联系人
-        self.wechatweb.webwx_get_contact()
+        contacts = self.wechatweb.webwx_get_contact()
+        self.user_manager.set_contacts(contacts)
         self.synccheck(loop=False)
         #TODO download the head image or icon of contact
         #fetch the icon or head image that init api response
         groups = []
-        for contact in wx_init_response['ContactList']:
+        for contact in mini_chat_list:
             user_name = contact['UserName']
             head_img_url = contact['HeadImgUrl']
             if not user_name or not head_img_url:
@@ -379,7 +385,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         about = About(self)
         about.show()
         
-    def emotionscodeinitial(self):
+    def init_emotion_code(self):
         self.emotionscode = property.parse(WeChatWin.I18N).properties or {}
         
     def relogin(self):
@@ -419,7 +425,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
                         
                 contact["DisplayName"] = "、".join(displayNames)
             #把聯天室加入聯系人列表對象
-            for member in self.wechatweb.getFriends():
+            for member in self.user_manager.get_contacts():
                 exist = False
                 if contact["UserName"] == member["UserName"]:
                     exist = True
@@ -427,11 +433,11 @@ class WeChatWin(QMainWindow, WeChatWindow):
                         member["DisplayName"]= "、".join(displayNames)
                     break
             if exist is False:
-                self.wechatweb.appendFriend(contact)
+                self.user_manager.append_chat_contact(contact)
             #更新chat_contact,以使其群成员有数据
-            for i,chat_contact in enumerate(self.wechatweb.getChatContacts()):
+            for i,chat_contact in enumerate(self.user_manager.get_chat_list()):
                 if contact["UserName"] == chat_contact["UserName"]:
-                    self.wechatweb.update_chat_contact(i,contact)
+                    self.user_manager.update_chat_contact(i,contact)
                     break
         return response
     
@@ -501,7 +507,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 image.load(self.config.getAppHome())
 
     def setupwxuser(self):
-        user = self.wechatweb.getUser()
+        user = self.user_manager.get_user()
         nickName = user['NickName']
         self.userNameLabel.setText(wechatutil.unicode(nickName))
         user_icon = "%s\\%s.jpg"%(self.config.customFace,user['UserName'] )
@@ -629,7 +635,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         #self.chatsWidget.setColumnCount(4)
         ''''''
-        for chat_contact in self.wechatweb.getChatContacts():
+        for chat_contact in self.user_manager.get_chat_list():
             self.append_chat_contact(chat_contact)
             
         '''
@@ -654,7 +660,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         self.friendsWidget.setColumnHidden(1,True)
         group_contact_list = []
-        for member in self.wechatweb.getFriends():
+        for member in self.user_manager.get_contacts():
             group_contact_list.append(member)
         group_contact_list.sort(key=lambda mm: mm['RemarkPYInitial'] or mm['PYInitial'])
         #group_contact_list.sort(key=lambda mm: mm['RemarkPYQuanPin'] or mm['PYQuanPin'])
@@ -720,11 +726,11 @@ class WeChatWin(QMainWindow, WeChatWindow):
         return self.get_member(user_name)
 
     def get_member(self,user_name):
-        for member in self.wechatweb.getChatContacts():
+        for member in self.user_manager.get_chat_list():
             if user_name == member['UserName']:
                 return member
             
-        for member in self.wechatweb.getFriends():
+        for member in self.user_manager.get_contacts():
             if user_name == member['UserName']:
                 return member
             
@@ -833,7 +839,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             print(self.frameGeometry())
             print(rect.width(), rect.height())
             
-            self.memberListWidget = MemberListWidget(memebers,self.wechatweb.getFriends(),self)
+            self.memberListWidget = MemberListWidget(memebers,self.user_manager.get_contacts(),self)
             self.memberListWidget.resize(QSize(MemberListWidget.WIDTH,rect.height()+self.frameGeometry().height()-self.geometry().height()))
             self.memberListWidget.move(self.frameGeometry().x()+self.frameGeometry().width(), self.frameGeometry().y())
             
@@ -914,7 +920,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             wechatutil.unicode(msg_body)
         )
         """
-        user = self.wechatweb.getUser()
+        user = self.user_manager.get_user()
         _msg = {}
         _msg['id'] = ""
         _user = {}
@@ -954,7 +960,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #if send success
         self.stick(select=True)
         #self.chatsWidget.selectRow(0)
-        format_msg = self.msg_timestamp(self.wechatweb.getUser()['NickName'])
+        format_msg = self.msg_timestamp(self.user_manager.get_user()['NickName'])
         #self.messages.page().mainFrame().evaluateJavaScript("append('%s');"%msgBody)
         #TODO append message
         self.messages.append(format_msg)
@@ -1092,7 +1098,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         
         from_user_name = message['FromUserName']
-        user = self.wechatweb.getUser()
+        user = self.user_manager.get_user()
         #如果和當前登陸人是同一個人
         if from_user_name == user["UserName"]:
             from_user = user
@@ -1138,19 +1144,12 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #用返回的數据更新會話列表
         '''
         statusNotifyUserName = message["StatusNotifyUserName"]
-        #
-        #StatusNotifyCode = 2,4,5
-        #4:初始化時所有的會話列表人員信息
-        #2應該是新增會話，就是要把此人加入會話列表
-        #5還不清楚
-        #
-        statusNotifyCode = message["StatusNotifyCode"]
         if statusNotifyUserName:
             statusNotifyUserNames = statusNotifyUserName.split(",")
             lists = []
             for userName in statusNotifyUserNames:
                 exist = False
-                for tl in self.wechatweb.getChatContacts():
+                for tl in self.user_manager.get_chat_list():
                     if userName == tl["UserName"]:
                         exist = True
                         break
@@ -1170,10 +1169,17 @@ class WeChatWin(QMainWindow, WeChatWindow):
             #update member list and download head image
             #拉取聯天室成員列表
             self.batch_get_contact(data=params)
+            #
+            #StatusNotifyCode = 2,4,5
+            #4:初始化時所有的會話列表人員信息
+            #2應該是新增會話，就是要把此人加入或提升到會話列表头
+            #5還不清楚
+            #
+            statusNotifyCode = message["StatusNotifyCode"]
             logging.debug('statusNotifyCode:%s'%statusNotifyCode)
             if statusNotifyCode == 4:
                 #update chat list
-                tmp_list = self.wechatweb.getChatContacts()[:]
+                tmp_list = self.user_manager.get_chat_list()[:]
                 for userName in statusNotifyUserNames:
                     exist = False
                     for tl in tmp_list:
@@ -1182,13 +1188,16 @@ class WeChatWin(QMainWindow, WeChatWindow):
                             break
                     if exist:
                         continue
-                    for member in self.wechatweb.getFriends():
+                    for member in self.user_manager.get_contacts():
                         if userName == member["UserName"]:
-                            self.wechatweb.appendChatContact(member)
+                            self.user_manager.append_chat_contact(member)
                             #self.append_contact_row(member,self.chatsModel)
                             break
+            elif statusNotifyCode == 2:#
+                logging.debug("加入或提升到会话列表首位")
             else:
-                logging.warn('statusNotifyCode is %s not process'%statusNotifyCode)
+                logging.warning('statusNotifyCode is %s not process'%statusNotifyCode)
+                logging.warning('message is %s'%message)
     
     def voice_msg_handler(self,msg):
         '''
@@ -1203,7 +1212,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
         #
         from_user_name = msg['FromUserName']
-        if from_user_name == self.wechatweb.getUser()['UserName']:
+        if from_user_name == self.user_manager.get_user()['UserName']:
             from_user_name = msg['ToUserName']
         if self.current_chat_contact and from_user_name == self.current_chat_contact['UserName']:
             self.messages.append(format_msg)
@@ -1212,7 +1221,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             pass
     def video_msg_handler(self,msg):
         '''
-            #把語音消息加入到聊天記錄裏
+        #把語音消息加入到聊天記錄裏
         '''
         if not self.current_chat_contact:
             pass
@@ -1222,7 +1231,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
         #
         from_user_name = msg['FromUserName']
-        if from_user_name == self.wechatweb.getUser()['UserName']:
+        if from_user_name == self.user_manager.get_user()['UserName']:
             from_user_name = msg['ToUserName']
         if self.current_chat_contact and from_user_name == self.current_chat_contact['UserName']:
             self.messages.append(format_msg)
@@ -1245,7 +1254,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #:如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
         #
         from_user_name = message['FromUserName']
-        if from_user_name == self.wechatweb.getUser()['UserName']:
+        if from_user_name == self.user_manager.get_user()['UserName']:
             from_user_name = message['ToUserName']
         if self.current_chat_contact and from_user_name == self.current_chat_contact['UserName']:
             content = message['Content']
@@ -1283,7 +1292,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
         #
         from_user_name = message['FromUserName']
-        if from_user_name == self.wechatweb.getUser()['UserName']:
+        if from_user_name == self.user_manager.get_user()['UserName']:
             from_user_name = message['ToUserName']
             
         if self.current_chat_contact and from_user_name == self.current_chat_contact['UserName']:
@@ -1310,7 +1319,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             xml_content = xml_content.replace("<br/>","")
         
         user_name = msg['FromUserName']
-        if user_name == self.wechatweb.getUser()['UserName']:
+        if user_name == self.user_manager.get_user()['UserName']:
             user_name = msg['ToUserName']
             
         msg_type = msg['MsgType']
@@ -1346,7 +1355,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             xmlContent = xmlContent.replace("<br/>","")
         print("xmlContent %s"%xmlContent)
         user_name = msg['FromUserName']
-        if user_name == self.wechatweb.getUser()['UserName']:
+        if user_name == self.user_manager.get_user()['UserName']:
             user_name = msg['ToUserName']
         if self.isChatRoom(user_name):
             index = xmlContent.find(":")
@@ -1439,7 +1448,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #have not received a message before（如果此人没有在會話列表中，則加入之）
         if not exist:
             contact = {}
-            for member in self.wechatweb.getFriends():
+            for member in self.user_manager.get_contacts():
                 if member['UserName'] == cache_key:
                     contact = member
                     break
@@ -1489,7 +1498,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 from_user_name = message['FromUserName']
             else:
                 #如果消息的發送者和登陸人一致，那麼上比消息有可能是通過其他設备發送，那麼有取ToUserName,才能顯示正确
-                if from_user_name == self.wechatweb.getUser()['UserName']:
+                if from_user_name == self.user_manager.get_user()['UserName']:
                     from_user_name = message['ToUserName']
             #
             #没有選擇和誰對話或者此消息的發送人和當前的對話人不一致，則把消息存放在message_cache中;
@@ -1542,7 +1551,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
                     self.wechatweb.webwx_get_msg_img(msg_id)
                     #st = time.strftime("%Y-%m-%d %H:%M:%S ", time.localtime())
                     #format_msg = ('(%s) %s:') % (st, self.wechatweb.user['NickName'])
-                    format_msg = self.msg_timestamp(self.wechatweb.getUser()['NickName'])
+                    format_msg = self.msg_timestamp(self.user_manager.get_user()['NickName'])
                     self.messages.append(format_msg)
                     if self.isImage(ffile):
                         msg_img = ('<img src=%s/%s.jpg>'%(self.config.getCacheImageHome(),msg_id))
@@ -1578,12 +1587,12 @@ class WeChatWin(QMainWindow, WeChatWindow):
         timer.setDaemon(True)
         timer.start()
     
-    '''
-    當UI顯示出來之後异步下載所有的custom face,發送信號更新
-    '''
     def downloadCustomFace(self):
+        #'''
+        #當UI顯示出來之後异步下載所有的custom face,發送信號更新
+        #'''
         logging.debug("do downloadCustomFace()")
-        for contact in self.wechatweb.getFriends():
+        for contact in self.user_manager.get_contacts():
             user_name = contact['UserName']
             head_img_url = contact['HeadImgUrl']
             if not user_name or not head_img_url:
@@ -1652,7 +1661,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
     def member_click(self):
         print("member_clicked in member_click()")
-        self.memberListWindow = ContactListWindow(self.wechatweb.getFriends(),self)
+        self.memberListWindow = ContactListWindow(self.user_manager.get_contacts(),self)
         self.memberListWindow.resize(400,600)
         self.memberListWindow.membersConfirmed.connect(self.getSelectedUsers)
         self.memberListWindow.show()

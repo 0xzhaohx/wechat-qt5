@@ -26,8 +26,8 @@ class MessageManager(object):
     
     def put_message(self,user_name,message):
         messages = []
-        if user_name in self.messages_pool:
-            messages = self.messages_pool[user_name]
+        if user_name in self.message_pools:
+            messages = self.message_pools[user_name]
         messages.append(message)
         self.message_pools[user_name] = messages
         
@@ -86,5 +86,6 @@ if __name__ == '__main__':
     print(message["CreateTime"] or "ddd")
     print(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(message["CreateTime"])))
     message_manager = MessageManager()
-    message_manager.insert_message(message)
+    #message_manager.insert_message(message)
+    message_manager.put_message("dd", message)
     

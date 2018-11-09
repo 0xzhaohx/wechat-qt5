@@ -20,6 +20,9 @@ class UserManager(object):
         self.__contact_list = []
         self.connection = sqlite3.connect("%s\\wechat.db"%self.config.getAppHome())
         
+    def set_user(self,user):
+        self.__user = user
+    
     def get_user(self):
         return self.__user
     
@@ -27,12 +30,18 @@ class UserManager(object):
         #获取所有的历史聊天记录人员列表
         return self.__chat_list
     
+    def set_chat_list(self,chat_list):
+        self.__chat_list = chat_list
+        
     def add_chat_contact(self,i,chat):
         self.__chat_list[i] = chat
     
     def append_chat_contact(self,chat):
         self.__chat_list.append(chat)
         
+    def set_contacts(self,contacts):
+        self.__contact_list = contacts
+    
     def get_contacts(self):
         #获取联系人列表
         return self.__contact_list
