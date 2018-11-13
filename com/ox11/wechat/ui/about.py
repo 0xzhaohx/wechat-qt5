@@ -18,7 +18,6 @@ class About(QDialog):
     
     def __init__(self,parent=None):
         super(About,self).__init__(parent)
-        #super(About,self).setWindowFlags(QtCore.Qt.Popup)
         self.setModal(True)
         self.resize(QSize(About.WIDTH,About.HEIGHT))
         self.setWindowTitle(__unicode("關於"))

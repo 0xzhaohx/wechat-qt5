@@ -14,17 +14,16 @@ import time
 import logging
 import platform
 
-from PyQt5.Qt import QIcon
+from PyQt5.Qt import QIcon, Qt
 from PyQt5 import QtGui, uic
-from PyQt5.QtWidgets import QApplication,QDialog,QMainWindow
+from PyQt5.QtWidgets import QApplication,QDialog,QMainWindow, QVBoxLayout,\
+    QLabel, QHBoxLayout
 
 from wechatweb import WeChatWeb
 from config import WechatConfig
 from com.ox11.wechat.wechatwin import WeChatWin
 
-qtCreatorFile = "resource/ui/wechat-1.0.ui"
-
-LauncherWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
+#LauncherWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 def getOSName():
     return platform.system()
@@ -42,40 +41,66 @@ def osbits(machine=None):
     machine2bits = {'AMD64': 64, 'x86_64': 64, 'i386': 32, 'x86': 32}
     return machine2bits.get(machine, None)
 
-class WeChatLauncher(QDialog, LauncherWindow):
+class WeChatLauncher(QDialog):#, LauncherWindow
 
-    timeout = login_state = exitt = False
+    timeout = login_state = False
     LOG_FILE = '%s/wechat.log'
     def __init__(self):
         QMainWindow.__init__(self)
-        LauncherWindow.__init__(self)
+        #LauncherWindow.__init__(self)
         #threading.Thread.__init__(self,name='wechat launcher')
         #self.setDaemon(True)
+        self.setWindowTitle("WeChat網頁版")
+        self.resize(260,360)
         
         self.weChatWeb = WeChatWeb()
         self.config = WechatConfig()
-        self.clean_log()
         logging.basicConfig(filename=(WeChatLauncher.LOG_FILE)%(self.config.getAppHome()),filemode='w',level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-        self.setupUi(self)
+        self.clean_log()
+        main_loyout = QVBoxLayout()
+        
+        self.qrLabel = QLabel()
+        qr_label_h_layout = QHBoxLayout()
+        qr_label_h_layout.addStretch(1)
+        qr_label_h_layout.addWidget(self.qrLabel)
+        qr_label_h_layout.addStretch(1)
+        
+        qr_label_v_layout = QVBoxLayout()
+        qr_label_v_layout.addStretch(1)
+        qr_label_v_layout.addLayout(qr_label_h_layout)
+        qr_label_v_layout.addStretch(1)
+        
+        self.label = QLabel("使用手機微信掃碼登錄")
+        self.label.setAlignment(Qt.AlignHCenter)
+        self.label_3 = QLabel("網頁版微信需要配合手機使用")
+        self.label_3.setAlignment(Qt.AlignHCenter)
+        main_loyout.addLayout(qr_label_v_layout)
+        #main_loyout.addStretch(1)
+        main_loyout.addWidget(self.label)
+        main_loyout.addWidget(self.label_3)
+        #main_loyout.addStretch(1)
+        
+        self.setLayout(main_loyout)
+        
+        #self.setupUi(self)
         self.setWindowIcon(QIcon("resource/icons/hicolor/32x32/apps/wechat.png"))
         self.setWindowIconText("WeChatWin 0.5")
-        #self.launcher_thread = WeChatLauncherThread(self)
         self.generate_qrcode()
-        #self.launcher_thread.start()
         self.load_qr_code_image()
-        #use threading.timer
         self.login_timer = threading.Timer(0, self.login)
         self.login_timer.setDaemon(True)
         self.login_timer.start()
 
     def set_qr_timeout(self):
         WeChatLauncher.timeout = True
+        self.generate_qrcode()
+        self.load_qr_code_image()
 
     def load_qr_code_image(self):
         qrcode_path = self.config.getAppHome()+"/qrcode.jpg"
         qr_image = QtGui.QImage()
         if qr_image.load(qrcode_path):
-            self.qrLabel.setPixmap(QtGui.QPixmap.fromImage(qr_image))
+            self.qrLabel.setPixmap(QtGui.QPixmap.fromImage(qr_image).scaled(215, 215))
             self.time_out_timer = threading.Timer(25, self.set_qr_timeout)
             self.time_out_timer.start()
         else:
@@ -107,50 +132,17 @@ class WeChatLauncher(QDialog, LauncherWindow):
     def closeEvent(self,event):
         self.login_timer.cancel()
         self.time_out_timer.cancel()
-        print("closed")
-'''
-class WeChatLauncherThread(threading.Thread):
-
-    def __init__(self,launcher):
-        threading.Thread.__init__(self,name='wechat launcher thread')
-        self.setDaemon(True)
-        self.launcher = launcher
-        #self.weChatWeb = weChatWeb
-
-    def run(self):
-        print("run")
-        while(False == WeChatLauncher.timeout == WeChatLauncher.login_state):
-            if(WeChatLauncher.exitt):
-                print("exit")
-                sys.exit(0)
-            self.launcher.login()
-            
-            time.sleep(2)
-'''
+        logging.debug("closed")
 
 def main():
-    #QtGui.QTextCodec.setCodecForTr(QtGui.QTextCodec.codecForName("utf8"))
-    #QtGui.QTextCodec.setCodecForCStrings(QtGui.QTextCodec.codecForLocale())
     app = QApplication(sys.argv)
     if getOSName() == "Windows":
         logging.warning("The OS name is Windows,will be exit!")
     launcher = WeChatLauncher()
-    #launcher.show()
-    #exit_code = 0;
     if QDialog.Accepted == launcher.exec_():
-        window = WeChatWin(launcher.weChatWeb)
+        window = WeChatWin()
         window.show()
         sys.exit(app.exec_())
-        '''
-        exit_code = app.exec_()
-        if(exit_code == 888):
-            sys.exit(exit_code)
-            main()
-    else:
-        WeChatLauncher.exitt=True
-        print("in main %d"%exit_code)
-        sys.exit(exit_code)
-        '''
         
 if __name__ =="__main__":
     main()

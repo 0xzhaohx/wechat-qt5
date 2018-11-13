@@ -24,6 +24,7 @@ class MembersWidget(QDialog):
     def __init__(self,member_list,contacts,parent = None):
         super(MembersWidget,self).__init__(parent)
         self.setMinimumSize(MembersWidget.WIDTH, 600)
+        self.setFixedWidth(MembersWidget.WIDTH)
         self.user_home = os.path.expanduser('~')
         #self.setAcceptDrops(True)
         self.app_home = self.user_home + '/.wechat/'
