@@ -53,7 +53,7 @@ class WeChatLauncher(QDialog):#, LauncherWindow
         self.setWindowTitle("WeChat網頁版")
         self.resize(260,360)
         
-        self.weChatWeb = WeChatWeb()
+        self.wechat_web = WeChatWeb()
         self.config = WechatConfig()
         logging.basicConfig(filename=(WeChatLauncher.LOG_FILE)%(self.config.getAppHome()),filemode='w',level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
         self.clean_log()
@@ -108,19 +108,18 @@ class WeChatLauncher(QDialog):#, LauncherWindow
 
     def login(self):
         #wait4login會一直等，直到用户扫描，如果扫描了，則一直等待在手機端確認
-        code = self.weChatWeb.wait4login()
+        code = self.wechat_web.wait4login()
         if "200" == code:
             WeChatLauncher.login_state = True
         else:
-            code = self.weChatWeb.wait4login(0)
+            code = self.wechat_web.wait4login(0)
             WeChatLauncher.login_state = (True if "200" == code else False)
         logging.debug("code is %s"%code)
-        print("code is %s"%code)
-        if WeChatLauncher.login_state:
+        if "200" == code:
             self.accept()
 
     def generate_qrcode(self):
-        self.weChatWeb.generate_qrcode()
+        self.wechat_web.generate_qrcode()
 
     def clean_log(self):
         if os.path.exists(WeChatLauncher.LOG_FILE%self.config.getAppHome()):
