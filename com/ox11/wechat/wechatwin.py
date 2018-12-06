@@ -5,6 +5,7 @@ Created on 2018年3月25日
 
 @author: zhaohongxing
 '''
+import random
 
 __date__='2018年3月25日'
 
@@ -166,7 +167,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.chatsWidget.setColumnHidden(4,True)
         self.chatsWidget.setColumnHidden(5,True)
         self.chatsWidget.setColumnHidden(6,True)
-        self.chatsWidget.setColumnWidth(1, 200);
+        self.chatsWidget.setColumnWidth(1, 220);
         self.chatsWidget.setColumnWidth(3, 30);
         #self.chatsWidget.horizontalHeader().setStretchLastSection(True)
         self.friendsWidget.setModel(self.friendsModel)
@@ -335,16 +336,13 @@ class WeChatWin(QMainWindow, WeChatWindow):
         mini_chat_list = wx_init_response['ContactList']
         self.user_manager.set_chat_list(mini_chat_list)
         logging.debug("取得的部分会话联系人有%d个："%len(mini_chat_list))
-        for i,chat in enumerate(mini_chat_list):
-            d_msg = i+1,":UserName:",chat["UserName"],";NickName:",chat["NickName"]
-            logging.debug(d_msg)
         
         #self.wechat_web.webwxstatusnotify()
         self.setupwxuser()
         #获取所有的联系人
         contacts = self.wechat_web.webwx_get_contact()
         logging.debug("联系人%d:"%(len(contacts)))
-        logging.debug(contacts)
+        #logging.debug(contacts)
         self.user_manager.set_contacts(contacts)
         self.synccheck(loop=False)
         #fetch the icon or head image that weixin initial response
@@ -361,12 +359,12 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 group['ChatRoomId'] = ''
                 groups.append(group)
                 #doanload head image
-                if os.path.exists("%s\\%s.jpg"%(self.config.customFace,user_name)):
+                if os.path.exists("%s%s%s.jpg"%(self.config.customFace,os.sep,user_name)):
                     logging.debug("custom face of chatroom %s is exist"%user_name)
                 else:
                     self.wechat_web.webwx_get_head_img(user_name,head_img_url)
             elif user_name.startswith('@'):
-                if os.path.exists("%s\\%s.jpg"%(self.config.customFace,user_name)):
+                if os.path.exists("%s%s%s.jpg"%(self.config.customFace,os.sep,user_name)):
                     logging.debug("custom face of %s is exist"%user_name)
                 else:
                     self.wechat_web.webwx_get_icon(user_name,head_img_url)
@@ -580,7 +578,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         ###############
         cells = []
-        #0 cell user name item
+        #1 cell user name item
         user_name = chat_contact['UserName']
         user_name_cell = QtGui.QStandardItem(wechatutil.unicode(user_name))
         cells.append(user_name_cell)
@@ -601,6 +599,16 @@ class WeChatWin(QMainWindow, WeChatWindow):
         #5 cell[message count]
         tips_count_item = QtGui.QStandardItem()
         cells.append(tips_count_item)
+        #6 cell[last message body]
+        last_message_item = QtGui.QStandardItem()
+        cells.append(last_message_item)
+        #7 cell[last message received time]
+        timess = ["12:21","13:34","09:34","21:22","15:45","17:42","10:34"]
+        last_message_recevied_time_item = QtGui.QStandardItem(timess[random.randint(0,len(timess)-1)])
+        cells.append(last_message_recevied_time_item)
+        #8 cell[chat room status]
+        chat_room_status_item = QtGui.QStandardItem()
+        cells.append(chat_room_status_item)
         
         if "APPEND" == action:
             self.chatsModel.appendRow(cells)
@@ -620,7 +628,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         user_name_item = QtGui.QStandardItem(wechatutil.unicode(user_name))
         cells.append(user_name_item)
         
-        user_head_icon = "%s\\%s.jpg"%(self.config.customFace, user_name)
+        user_head_icon = "%s%s%s.jpg"%(self.config.customFace,os.sep, user_name)
         if not os.path.exists(user_head_icon):
             user_head_icon = "./resource/images/default.png"
         
@@ -1542,19 +1550,25 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 logging.warn('message type %d'%msg_type)
                 logging.warn('message body %s'%message)
                 return
-            #insert message to database
-            self.message_manager.insert_message(message)
             #
             #
             #
             from_user_name = message['FromUserName']
+            print(message)
             if self.isChatRoom(from_user_name):
                 #user_name = from_user_name
-                from_user_name = message['FromUserName']
+                #from_user_name = message['FromUserName']
+                pass
             else:
-                #如果消息的發送者和登陸人一致，那麼上比消息有可能是通過其他設备發送，那麼有取ToUserName,才能顯示正确
+                #如果消息的發送者和登陸人一致，那麼此消息有可能是通過其他設备發送，那麼有取ToUserName,才能顯示正确
                 if from_user_name == self.user_manager.get_user()['UserName']:
                     from_user_name = message['ToUserName']
+            
+            #get local user id
+            local_user_id = self.user_manager.get_locale_user_id_by_fresh_user_name(from_user_name)
+            local_to_user_id = self.user_manager.get_locale_user_id_by_fresh_user_name(message['ToUserName'])
+            #insert message to database
+            self.message_manager.insert_message(message,local_user_id,local_to_user_id)
             #
             #没有選擇和誰對話或者此消息的發送人和當前的對話人不一致，則把消息存放在message_cache中;
             #如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在聊天窗口中
@@ -1652,7 +1666,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             head_img_url = contact['HeadImgUrl']
             if not user_name or not head_img_url:
                 continue
-            image = '%s\\%s.jpg'%(self.config.customFace,user_name)
+            image = '%s%s%s.jpg'%(self.config.customFace,os.sep,user_name)
             #下載聯天室圖像
             if not os.path.exists(image):
                 logging.debug("Downloading %s"%image)

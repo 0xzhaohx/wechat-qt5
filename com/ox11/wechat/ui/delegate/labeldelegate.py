@@ -32,16 +32,16 @@ class LabelDelegate(QStyledItemDelegate):
     #屏弊狀態0,1
     ROOM_STATUES_COLUMN = 3
     MSG_COUNT_COLUMN = 4
-    LAST_MSG_BODY_COLUMN_INDEX = 6
-    LAST_MSG_TIME_COLUMN_INDEX = 7
+    LAST_MSG_BODY_COLUMN_INDEX = 5
+    LAST_MSG_TIME_COLUMN_INDEX = 6
     
     DEFAULT_IMAGE = "./resource/images/default.png"
     #DEFAULT_IMAGE = "C:/Users/zhaohongxing/Pictures/aaa.jpg"
     
     #CONTACT_HEAD_HOME = ("/heads/contact/")
-    APP_HOME = ("%s\\.wechat")%(os.path.expanduser('~'))
-    CUSTOM_FACE = "%s\\customface"%(APP_HOME)
-    IMAGE_RECIVE = "%s\\imageRec"%(APP_HOME)
+    APP_HOME = ("%s%s.wechat")%(os.path.expanduser('~'),os.sep)
+    CUSTOM_FACE = "%s%scustomface"%(APP_HOME,os.sep)
+    IMAGE_RECIVE = "%s%simageRec"%(APP_HOME,os.sep)
     
     def paint_count(self, painter, option,index):
         pass
@@ -59,8 +59,12 @@ class LabelDelegate(QStyledItemDelegate):
             if len(display_name) > 15:
                 display_name = display_name[0:15]
             painter.drawText(txt_x,txt_y, "%s"%display_name)
-        st = time.strftime("%Y-%m-%d %H:%M", time.localtime())
-        painter.drawText(txt_x+60,txt_y, "%s"%st)
+        #最後一條消息接收時間
+        last_msg_received_time_index = model.index(index.row(),LabelDelegate.LAST_MSG_TIME_COLUMN_INDEX)
+        last_message_received_time = model.data(last_msg_received_time_index)
+        if not last_message_received_time:
+            last_message_received_time = time.strftime("%H:%M", time.localtime())
+        painter.drawText(txt_x+120,txt_y, "%s"%last_message_received_time)
         #最後一條消息
         last_msg_index = model.index(index.row(),LabelDelegate.LAST_MSG_BODY_COLUMN_INDEX)
         last_message = model.data(last_msg_index)
@@ -96,7 +100,7 @@ class LabelDelegate(QStyledItemDelegate):
             head_image_y_offset = 10
             head_image_x = rect_x + head_image_x_offset
             head_image_y = rect_y + head_image_y_offset
-            image = ("%s\\%s.jpg")%(LabelDelegate.CUSTOM_FACE,userName)
+            image = ("%s%s%s.jpg")%(LabelDelegate.CUSTOM_FACE,os.sep,userName)
             if not os.path.exists(image):
                 image = LabelDelegate.DEFAULT_IMAGE
             painter.drawPixmap(head_image_x,head_image_y,LabelDelegate.HEAD_IMG_WIDTH,LabelDelegate.HEAD_IMG_HEIGHT, QPixmap(image))
