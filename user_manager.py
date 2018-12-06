@@ -7,7 +7,10 @@ Created on 2018年11月6日
 '''
 import sqlite3
 from config import WechatConfig
-
+'''
+PYInitial和PYQuanPin的值和NickName有關
+RemarkPYInitial和RemarkPYQuanPin的值和RemarkName有關
+'''
 class UserManager(object):
     
     def __init__(self):
@@ -45,6 +48,37 @@ class UserManager(object):
     def get_contacts(self):
         #获取联系人列表
         return self.__contact_list
+    
+    def get_locale_user_id_by_fresh_user_name(self,user_name):
+        #根据最新user_name获取存儲在數据中联系人的user_id
+        if not user_name:
+            return "-1"
+        fresh_from_contact = None
+        for contact in self.__contact_list:
+            if user_name == contact["UserName"]:
+                fresh_from_contact = contact
+                break
+        
+        storaged_users = self.get_storaged_contacts()
+        for sto_user in storaged_users:
+            if self.user_match(sto_user, fresh_from_contact):
+                return sto_user["USER_ID"]
+        return "-1"
+        
+    def user_match(self,storage_user,fresh_user):
+        return storage_user["PY_QUANPIN"] == fresh_user["PYQuanPin"] 
+
+    def match_deep_1(self,storage_user,fresh_user):
+        pass
+    
+    def match_deep_2(self,storage_user,fresh_user):
+        pass
+    
+    def match_deep_3(self,storage_user,fresh_user):
+        pass
+    
+    def match_deep_4(self,storage_user,fresh_user):
+        pass
     
     def append_contact(self,contact):
         self.__contact_list.append(contact)
@@ -111,10 +145,21 @@ class UserManager(object):
         else:
             return None
     
-    def get_users(self):
+    def get_storaged_contacts(self):
         cursor = self.connection.cursor()
         select = "SELECT *  FROM USER"
-        cursor.execute(select)
+        result = cursor.execute(select)
+        stored_users = []
+        for row in result:
+            stored_user = {}
+            stored_user["USER_ID"]= row[0]
+            stored_user["NICK_NAME"]= row[5]
+            stored_user["REMARK_NAME"]= row[6]
+            stored_user["PY_QUANPIN"]= row[7]
+            stored_user["USER_ID"]= row[0]
+            stored_users.append(stored_user)
+        return stored_users
+        
     
     def update_user(self):
         pass

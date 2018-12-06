@@ -3,7 +3,7 @@
 block_cipher = None
 
 a = Analysis(['./wechat.py'],
-             pathex=['/home/zhaohongxing/workspace/python/webwechat','/home/zhaohongxing/workspace/python/libwechatweb'],
+             pathex=['C:\Users\zhaohongxing\workspace\python\wechat-qt5','C:\Users\zhaohongxing\workspace\python\libwechatweb'],
              binaries=[],
              datas=[
              	('./resource','resource'),

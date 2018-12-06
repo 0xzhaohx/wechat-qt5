@@ -32,8 +32,8 @@ class LabelDelegate(QStyledItemDelegate):
     #屏弊狀態0,1
     ROOM_STATUES_COLUMN = 3
     MSG_COUNT_COLUMN = 4
-    LAST_MSG_BODY_COLUMN_INDEX = 6
-    LAST_MSG_TIME_COLUMN_INDEX = 7
+    LAST_MSG_BODY_COLUMN_INDEX = 5
+    LAST_MSG_TIME_COLUMN_INDEX = 6
     
     DEFAULT_IMAGE = "./resource/images/default.png"
     #DEFAULT_IMAGE = "C:/Users/zhaohongxing/Pictures/aaa.jpg"
@@ -59,8 +59,12 @@ class LabelDelegate(QStyledItemDelegate):
             if len(display_name) > 15:
                 display_name = display_name[0:15]
             painter.drawText(txt_x,txt_y, "%s"%display_name)
-        st = time.strftime("%Y-%m-%d %H:%M", time.localtime())
-        painter.drawText(txt_x+60,txt_y, "%s"%st)
+        #最後一條消息接收時間
+        last_msg_received_time_index = model.index(index.row(),LabelDelegate.LAST_MSG_TIME_COLUMN_INDEX)
+        last_message_received_time = model.data(last_msg_received_time_index)
+        if not last_message_received_time:
+            last_message_received_time = time.strftime("%H:%M", time.localtime())
+        painter.drawText(txt_x+120,txt_y, "%s"%last_message_received_time)
         #最後一條消息
         last_msg_index = model.index(index.row(),LabelDelegate.LAST_MSG_BODY_COLUMN_INDEX)
         last_message = model.data(last_msg_index)

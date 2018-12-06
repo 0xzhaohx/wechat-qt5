@@ -39,22 +39,38 @@ class MessageManager(object):
     def put_block_message(self,message):
         self.block_message_pools.append(message)
     
-    def insert_message(self,message):
+    def insert_message(self,message,local_user_id,local_to_user_id):
         cursor = self.connection.cursor()
         #FACE_ID圖片名稱
         #FACE_ID_HASH 圖片HASH值
         sql = "INSERT INTO MESSAGE(\
         MESSAGE_ID,\
         USER_ID,\
-        TO_USER_NAME,\
+        TO_USER_ID,\
         BODY,\
         RECEIVED_TIME) VALUES(%d,%d,'%s','%s','%s')"%(\
-        message["NewMsgId"],message["NewMsgId"],message["ToUserName"],message["Content"],
+        message["NewMsgId"],local_user_id,local_to_user_id,message["Content"],
         time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(message["CreateTime"] or "0"))
         )
         logging.debug(sql)
         cursor.execute(sql)
         self.connection.commit()
+        
+    def get_last_message_by_user(self,user_id):
+        cursor = self.connection.cursor()
+        #FACE_ID圖片名稱
+        #FACE_ID_HASH 圖片HASH值
+        sql = "SELECT body, received_time FROM message WHERE user_id=%s order by received_time desc limit 1"%(user_id)
+        logging.debug(sql)
+        result = cursor.execute(sql)
+        row = result.fetchone()
+        if row:
+            message = {}
+            message["Body"] = row[0]
+            message["ReceivedTime"] = row[1]
+            return message
+        else:
+            return None
     
     def delete_message(self,message_id):
         pass
