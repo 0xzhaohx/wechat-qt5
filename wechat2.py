@@ -103,7 +103,8 @@ class WeChatLauncher(QDialog, LauncherWindow):
                 
     def closeEvent(self,event):
         self.login_timer.cancel()
-        self.time_out_timer.cancel()
+        if self.time_out_timer:
+            self.time_out_timer.cancel()
         logging.debug("application exit")
 
 def main():

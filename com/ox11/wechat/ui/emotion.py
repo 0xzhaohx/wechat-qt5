@@ -55,7 +55,7 @@ class Emotion(QWidget):
         emotions_size = len(emotions)
         #TODO FIX SORTED MISSING CMP BUG
         #emotions = sorted(emotions,key=lambda e:(int(e.split("."))))
-        #emotions = sorted(emotions,key=functools.cmp_to_key(emotionCmp))
+        emotions = sorted(emotions,key=functools.cmp_to_key(emotionCmp))
         i = 0
         while i < emotions_size:
             self.add_emotion(emotions[i:i+14])

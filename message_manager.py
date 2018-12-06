@@ -5,6 +5,7 @@ Created on 2018年3月25日
 
 @author: zhaohongxing
 '''
+import os
 import sqlite3
 import time
 import logging
@@ -14,7 +15,7 @@ class MessageManager(object):
     
     def __init__(self):
         self.config = WechatConfig()
-        self.connection = sqlite3.connect("%s\\wechat.db"%self.config.getAppHome())
+        self.connection = sqlite3.connect("%s%swechat.db"%(self.config.getAppHome(),os.sep))
         #接收到的新消息，还没有点开看过。
         #因为可能会有多位联系人发来消息，同时为了存储和获取方便，用一个对像来存储
         self.message_pools = {}

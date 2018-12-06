@@ -6,6 +6,7 @@ Created on 2018年11月6日
 @author: zhaohongxing
 '''
 import sqlite3
+import os
 from config import WechatConfig
 '''
 PYInitial和PYQuanPin的值和NickName有關
@@ -21,7 +22,7 @@ class UserManager(object):
         self.__chat_list = []
         #聯系人列表（包含會話列表）
         self.__contact_list = []
-        self.connection = sqlite3.connect("%s\\wechat.db"%self.config.getAppHome())
+        self.connection = sqlite3.connect("%s%swechat.db"%(self.config.getAppHome(),os.sep))
         
     def set_user(self,user):
         self.__user = user
