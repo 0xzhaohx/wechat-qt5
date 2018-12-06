@@ -56,14 +56,12 @@ class LabelDelegate(QStyledItemDelegate):
         display_name_index = model.index(index.row(),LabelDelegate.DISPLAY_NAME_COLUMN_INDEX)
         display_name = model.data(display_name_index)
         if display_name:
-            if len(display_name) > 15:
-                display_name = display_name[0:15]
+            if len(display_name) > 8:
+                display_name = "%s..."%display_name[0:8]
             painter.drawText(txt_x,txt_y, "%s"%display_name)
         #最後一條消息接收時間
         last_msg_received_time_index = model.index(index.row(),LabelDelegate.LAST_MSG_TIME_COLUMN_INDEX)
         last_message_received_time = model.data(last_msg_received_time_index)
-        if not last_message_received_time:
-            last_message_received_time = time.strftime("%H:%M", time.localtime())
         painter.drawText(txt_x+120,txt_y, "%s"%last_message_received_time)
         #最後一條消息
         last_msg_index = model.index(index.row(),LabelDelegate.LAST_MSG_BODY_COLUMN_INDEX)

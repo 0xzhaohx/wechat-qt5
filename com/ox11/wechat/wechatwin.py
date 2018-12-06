@@ -149,8 +149,8 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.friendsWidget.setVisible(False)
         self.publicWidget.setVisible(False)
         self.profileWidget.setVisible(False)
-        self.init_chat_contacts()
         self.init_friends()
+        self.init_chat_contacts()
         self.init_public()
         self.init_emotion_code()
         self.initialed.connect(self.process_blocked_messages)
@@ -600,11 +600,15 @@ class WeChatWin(QMainWindow, WeChatWindow):
         tips_count_item = QtGui.QStandardItem()
         cells.append(tips_count_item)
         #6 cell[last message body]
-        last_message_item = QtGui.QStandardItem()
+        #LocalUserId see init_friends
+        last_message = None
+        if "LocalUserId" in chat_contact:
+            last_message = self.message_manager.get_last_message_by_user(chat_contact["LocalUserId"])
+            
+        last_message_item = QtGui.QStandardItem(last_message["Body"] and "Body" in last_message if(last_message) else "")
         cells.append(last_message_item)
         #7 cell[last message received time]
-        timess = ["12:21","13:34","09:34","21:22","15:45","17:42","10:34"]
-        last_message_recevied_time_item = QtGui.QStandardItem(timess[random.randint(0,len(timess)-1)])
+        last_message_recevied_time_item = QtGui.QStandardItem(last_message["ReceivedTime"] and "ReceivedTime" in last_message if(last_message) else "")
         cells.append(last_message_recevied_time_item)
         #8 cell[chat room status]
         chat_room_status_item = QtGui.QStandardItem()
@@ -669,6 +673,11 @@ class WeChatWin(QMainWindow, WeChatWindow):
         ''''''
         #print("初始化init_chat_contacts()")
         for chat_contact in self.user_manager.get_chat_list():
+            for member in self.user_manager.get_contacts():
+                #TODO add local_user_id to 'member'
+                if member["PYQuanPin"] == chat_contact["PYQuanPin"]:
+                    chat_contact["LocalUserId"]=member["LocalUserId"]
+                    break
             self.append_chat_contact(chat_contact)
             #print(":UserName:",chat_contact["UserName"],";NickName:",chat_contact["NickName"])
             
@@ -698,15 +707,16 @@ class WeChatWin(QMainWindow, WeChatWindow):
             group_contact_list.append(member)
         group_contact_list.sort(key=lambda mm: mm['RemarkPYInitial'] or mm['PYInitial'])
         #group_contact_list.sort(key=lambda mm: mm['RemarkPYQuanPin'] or mm['PYQuanPin'])
-        for member in group_contact_list:#.sort(key=lambda m: m['PYInitial'])
+        for member in self.user_manager.get_contacts():#.sort(key=lambda m: m['PYInitial'])
             #print(member)
             py_quan_pin = member["PYQuanPin"]
             user = None
             if py_quan_pin:
                 user = self.user_manager.get_user_by_id(py_quan_pin)
             #如果已存在
+            #TODO add local_user_id to 'member'
             if user:
-                pass
+                member["LocalUserId"]=user["user_id"]
             else:
                 self.user_manager.insert_user(member)
             self.append_friend(member)
