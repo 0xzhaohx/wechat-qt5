@@ -167,6 +167,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.chatsWidget.setColumnHidden(4,True)
         self.chatsWidget.setColumnHidden(5,True)
         self.chatsWidget.setColumnHidden(6,True)
+        self.chatsWidget.setColumnHidden(7,True)
         self.chatsWidget.setColumnWidth(1, 220);
         self.chatsWidget.setColumnWidth(3, 30);
         #self.chatsWidget.horizontalHeader().setStretchLastSection(True)
@@ -527,7 +528,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         user = self.user_manager.get_user()
         nickName = user['NickName']
         self.userNameLabel.setText(wechatutil.unicode(nickName))
-        user_icon = "%s\\%s.jpg"%(self.config.customFace,user['UserName'] )
+        user_icon = "%s%s%s"%(self.config.customFace,os.sep,user['UserName'] )
         user_head_image = QtGui.QImage()
         if user_head_image.load(user_icon):
             self.headImageLabel.setPixmap(QtGui.QPixmap.fromImage(user_head_image).scaled(40, 40))
@@ -583,7 +584,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         user_name_cell = QtGui.QStandardItem(wechatutil.unicode(user_name))
         cells.append(user_name_cell)
         #2 cell
-        user_head_icon = "%s\\%s.jpg"%(self.config.customFace,user_name)
+        user_head_icon = "%s%s%s.jpg"%(self.config.customFace,os.sep,user_name)
         item = QtGui.QStandardItem(QIcon(user_head_icon),"")
         cells.append(item)
         #3 cell
@@ -605,10 +606,10 @@ class WeChatWin(QMainWindow, WeChatWindow):
         if "LocalUserId" in chat_contact:
             last_message = self.message_manager.get_last_message_by_user(chat_contact["LocalUserId"])
             
-        last_message_item = QtGui.QStandardItem(last_message["Body"] and "Body" in last_message if(last_message) else "")
+        last_message_item = QtGui.QStandardItem(last_message["Body"] if(last_message and "Body" in last_message ) else "")
         cells.append(last_message_item)
         #7 cell[last message received time]
-        last_message_recevied_time_item = QtGui.QStandardItem(last_message["ReceivedTime"] and "ReceivedTime" in last_message if(last_message) else "")
+        last_message_recevied_time_item = QtGui.QStandardItem(last_message["ReceivedTime"] if(last_message and "ReceivedTime" in last_message) else "")
         cells.append(last_message_recevied_time_item)
         #8 cell[chat room status]
         chat_room_status_item = QtGui.QStandardItem()
@@ -676,6 +677,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             for member in self.user_manager.get_contacts():
                 #TODO add local_user_id to 'member'
                 if member["PYQuanPin"] == chat_contact["PYQuanPin"]:
+                    print("local user id:%s"%member["LocalUserId"])
                     chat_contact["LocalUserId"]=member["LocalUserId"]
                     break
             self.append_chat_contact(chat_contact)
@@ -917,7 +919,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.user_name_label.setText(user_name)
         if contact:
             #user_icon = self.config.getContactHeadHome() + contact['UserName'] + ".jpg"
-            user_icon = "%s\\%s.jpg"%(self.config.customFace, contact['UserName'])
+            user_icon = "%s%s%s.jpg"%(self.config.customFace,os.sep, contact['UserName'])
             user_head_image = QtGui.QImage()
             if user_head_image.load(user_icon):
                 self.avater_label.setPixmap(QtGui.QPixmap.fromImage(user_head_image).scaled(132, 132))
@@ -980,7 +982,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         _msg['id'] = ""
         _user = {}
         _user['head_class']=("divMyHead" if user["UserName"] == user_name else "divotherhead")
-        _user['head_img']="%s\\%s.jpg"%(self.config.customFace , user_name)
+        _user['head_img']="%s%s%s.jpg"%(self.config.customFace ,os.sep, user_name)
         _msg['user']=_user
         _body = {}
         _body['content_class']= ("triangle-right right" if user["UserName"] == user_name else "triangle-left left")
@@ -1257,6 +1259,8 @@ class WeChatWin(QMainWindow, WeChatWindow):
                     #如果没有显示在UI上，则从联系人列表中找出，加入到会话列表，并同时更新table中的数据
                     for contact in self.user_manager.get_contacts():
                         if userName == contact["UserName"]:
+                            if "LocalUserId" in contact:
+                                print("local user id[initinal]:%s"%contact["LocalUserId"])
                             self.user_manager.append_chat_contact(contact)
                             self.append_chat_contact(contact)
                             break
@@ -1704,7 +1708,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
         if row_will_be_update >= 0:
             logging.debug("row %d will be updateCustomFace:"%row_will_be_update)
-            custom_face = "%s\\%s.jpg"%(self.config.customFace,contact)
+            custom_face = "%s%s%s.jpg"%(self.config.customFace,os.sep,contact)
             index = self.chatsModel.index(row_will_be_update,1)
             custom_fact_item = self.chatsModel.itemFromIndex(index)
             if custom_fact_item:
@@ -1802,7 +1806,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         item = QtGui.QStandardItem(("+"))
         cells.append(item)
         for member in members[0:3]:
-            user_head_icon = "%s\\%s.jpg"%(self.config.customFace, member['UserName']+".jpg")
+            user_head_icon = "%s%s%s"%(self.config.customFace,os.sep, member['UserName'])
             if not os.path.exists(user_head_icon):
                 user_head_icon = './resource/images/webwxgeticon.png'#self.default_member_icon
             dn = member['DisplayName'] or member['NickName']
@@ -1818,7 +1822,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         while i < members_len:
             cells = []
             for member in members[i:i+4]:
-                user_head_icon = "%s\\%s.jpg"%(self.config.customFace, member['UserName']+".jpg")
+                user_head_icon = "%s%s%s"%(self.config.customFace,os.sep, member['UserName'])
                 if not os.path.exists(user_head_icon):
                     user_head_icon = './resource/images/webwxgeticon.png'#self.default_member_icon
                 dn = member['DisplayName'] or member['NickName']

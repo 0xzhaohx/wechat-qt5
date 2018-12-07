@@ -9,7 +9,7 @@ import os
 
 from PyQt5.Qt import QStyledItemDelegate, QColor, QPixmap
 from PyQt5.QtWidgets import QStyle
-import time
+import datetime
 
 class LabelDelegate(QStyledItemDelegate):
     
@@ -62,12 +62,14 @@ class LabelDelegate(QStyledItemDelegate):
         #最後一條消息接收時間
         last_msg_received_time_index = model.index(index.row(),LabelDelegate.LAST_MSG_TIME_COLUMN_INDEX)
         last_message_received_time = model.data(last_msg_received_time_index)
-        painter.drawText(txt_x+120,txt_y, "%s"%last_message_received_time)
+        if last_message_received_time:
+            last_message_received_time_str = self.format_last_message_received_time(last_message_received_time)
+            painter.drawText(txt_x+115,txt_y, "%(s1)+10s"%{"s1":last_message_received_time_str})
         #最後一條消息
         last_msg_index = model.index(index.row(),LabelDelegate.LAST_MSG_BODY_COLUMN_INDEX)
         last_message = model.data(last_msg_index)
         if last_message:
-            painter.drawText(txt_x,rect_y+LabelDelegate.HEAD_IMG_HEIGHT, "%s"%last_message)
+            painter.drawText(txt_x,rect_y+LabelDelegate.HEAD_IMG_HEIGHT+3, "%s"%last_message)
         
         user_name_index = model.index(index.row(),LabelDelegate.USER_NAME_COLUMN)
         user_name = model.data(user_name_index)
@@ -75,6 +77,27 @@ class LabelDelegate(QStyledItemDelegate):
         if user_name.startswith("@@"):
             pass
         painter.restore()
+        
+    def format_last_message_received_time(self,last_message_received_time):
+        #如果last_message_received_time是今天，只显示时间
+        #如果是昨天，则显示为昨天
+        #如果是本周内的日期，则显示为星期几
+        #否则就显示对应的日期
+        #0（星期一）到6（星期日）
+        last_message_datetime = datetime.datetime.strptime(last_message_received_time, "%Y-%m-%d %H:%M:%S")  
+
+        today = datetime.date.today()
+        diff_days = (today - last_message_datetime.date()).days
+        if diff_days == 0:
+            return last_message_datetime.strftime("%H:%M:%S")
+        elif diff_days == 1:
+            return "昨天"
+        elif diff_days > 1 and diff_days <= 6:
+            weekday = last_message_datetime.weekday()
+            weekdays = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
+            return weekdays[weekday]
+        else:
+            return last_message_datetime.strftime("%Y-%m-%d")
     
     def paint(self, painter, option,index):
         if index.column() ==1:
