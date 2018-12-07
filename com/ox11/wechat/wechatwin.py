@@ -28,7 +28,6 @@ from PyQt5.QtGui import QIcon, QCursor, QTextImageFormat,QStandardItemModel
 from PyQt5.QtWidgets import QLabel,QDialog,QFileDialog,QMenu,QVBoxLayout,QAction,QMainWindow
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import QSize, pyqtSlot, pyqtSignal, QPoint
-from PyQt5.Qt import Qt
     
 import wechatutil
 from message import Message
@@ -376,7 +375,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
             'Count': len(groups),
             'List': groups
         }
-        #IMPORT第一次调用
+        #IMPORTANT第一次调用
         self.batch_get_contact(data=params)
         
     def addMenu4SendButton(self):
@@ -766,18 +765,6 @@ class WeChatWin(QMainWindow, WeChatWindow):
         self.chatsWidget.setVisible(False)
         self.chatAreaWidget.setVisible(False)
 
-    def get_contact(self,user_name):
-        return self.get_member(user_name)
-
-    def get_member(self,user_name):
-        for member in self.user_manager.get_chat_list():
-            if user_name == member['UserName']:
-                return member
-            
-        for member in self.user_manager.get_contacts():
-            if user_name == member['UserName']:
-                return member
-            
     def chat_item_clicked(self):
         #
         #TODO clear message's pool
@@ -804,11 +791,11 @@ class WeChatWin(QMainWindow, WeChatWindow):
         user_name = user_name_cell
         logging.debug("current click user is %s"%user_name)
         if self.isChatRoom(user_name):
-            contact = self.get_member(user_name)
+            contact = self.user_manager.get_member(user_name)
             display_name = contact['DisplayName'] or contact['RemarkName'] or contact['NickName']
             self.currentChatUser.setText(("%s (%d)")%(wechatutil.unicode(display_name),contact["MemberCount"]))
         else:
-            contact = self.get_contact(user_name)
+            contact = self.user_manager.get_contact(user_name)
             display_name = contact['DisplayName'] or contact['RemarkName'] or contact['NickName']
             self.currentChatUser.setText(wechatutil.unicode(display_name))
         self.current_chat_contact = contact
@@ -841,7 +828,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 #break
     def showMembers(self):
         '''
-        :desc 处厘显示成员列表方法
+        :desc 处里显示成员列表方法
         '''
         self.current_chat_user_click()
         '''
@@ -914,7 +901,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         user_name = user_name_o.toString()
         '''
         user_name = user_name_o
-        contact = self.get_member(user_name)
+        contact = self.user_manager.get_member(user_name)
         self.user_name_label.setVisible(False)
         self.user_name_label.setText(user_name)
         if contact:
@@ -1136,7 +1123,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         sticked = self.stick(select=True)
         if not sticked:
-            user = self.get_contact(self.current_chat_contact["UserName"])
+            user = self.user_manager.get_contact(self.current_chat_contact["UserName"])
             self.append_chat_contact(user,action="INSERT",row=0)
             self.chatsWidget.selectRow(0)
     
@@ -1160,7 +1147,7 @@ class WeChatWin(QMainWindow, WeChatWindow):
         if from_user_name == user["UserName"]:
             from_user = user
         else:
-            from_user = self.get_contact(from_user_name)
+            from_user = self.user_manager.get_contact(from_user_name)
         from_user_display_name = from_member_name= None
         #如果為群，則消息來源顯示from_member_name
         #如果是群消息
@@ -1672,14 +1659,15 @@ class WeChatWin(QMainWindow, WeChatWindow):
         '''
         user_name = self.user_name_label.text()
         logging.debug("to_chat user_name %s"%(user_name))
-        self.current_chat_contact = self.get_contact(user_name)
+        self.current_chat_contact = self.user_manager.get_contact(user_name)
         if self.current_chat_contact:
             self.messages_clear()
         self.switch_chat(show=True)
         self.over_the_top()
-            
+    '''
     def keyPressEvent(self,event):
         print("keyPressEvent")
+    '''
         
     def startDwonloadCustomFace(self):
         timer = threading.Timer(1, self.downloadCustomFace)

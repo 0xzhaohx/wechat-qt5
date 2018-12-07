@@ -49,6 +49,18 @@ class UserManager(object):
     def get_contacts(self):
         #获取联系人列表
         return self.__contact_list
+
+    def get_contact(self,user_name):
+        return self.get_member(user_name)
+
+    def get_member(self,user_name):
+        for member in self.get_chat_list():
+            if user_name == member['UserName']:
+                return member
+            
+        for member in self.get_contacts():
+            if user_name == member['UserName']:
+                return member
     
     def get_locale_user_id_by_fresh_user_name(self,user_name):
         #根据最新user_name获取存儲在數据中联系人的user_id

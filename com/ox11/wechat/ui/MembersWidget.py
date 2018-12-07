@@ -24,6 +24,7 @@ class MembersWidget(QDialog):
     def __init__(self,member_list,contacts,parent = None):
         super(MembersWidget,self).__init__(parent)
         self.setMinimumSize(MembersWidget.WIDTH, 600)
+        self.setWindowTitle("群成员")
         self.setFixedWidth(MembersWidget.WIDTH)
         self.user_home = os.path.expanduser('~')
         #self.setAcceptDrops(True)
@@ -120,8 +121,10 @@ class MembersWidget(QDialog):
     @pyqtSlot(str)
     def route(self,_object):
         self.membersChanged.emit(_object)
-        
-    def event(self, event):#
+    
+    #orerride
+    #用来处理点击其他窗口时用户列表窗口自动隐藏
+    def event(self, event):
         if event.type() == QEvent.ActivationChange:
             if QApplication.activeWindow() != self:
                 self.close()
