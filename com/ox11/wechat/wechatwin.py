@@ -5,8 +5,6 @@ Created on 2018年3月25日
 
 @author: zhaohongxing
 '''
-import random
-
 __date__='2018年3月25日'
 
 '''
@@ -87,6 +85,8 @@ class WeChatWin(QMainWindow, WeChatWindow):
     customFaceDownloadSuccess = pyqtSignal(str)
     
     MESSAGE_COUNT_CELL_INDEX = 4
+    LAST_MESSAGE_BODY_CELL = 5
+    LAST_MESSAGE_RECEIVED_TIME_CELL = 6
     
     def __init__(self):
         QMainWindow.__init__(self)
@@ -1319,7 +1319,6 @@ class WeChatWin(QMainWindow, WeChatWindow):
         
         from_user_display_name = self.get_user_display_name(message)
         
-            
         format_msg = self.msg_timestamp(from_user_display_name,message["CreateTime"])
         #
         #:如果此消息的發件人和當前聊天的是同一個人，則把消息顯示在窗口中
@@ -1517,6 +1516,23 @@ class WeChatWin(QMainWindow, WeChatWindow):
                 else:
                     count_tips_item = QtGui.QStandardItem("1")
                     self.chatsModel.setItem(row, WeChatWin.MESSAGE_COUNT_CELL_INDEX, count_tips_item)
+                #update last mesage received time
+                last_message_received_time_index = self.chatsModel.index(row,WeChatWin.LAST_MESSAGE_RECEIVED_TIME_CELL)
+                last_message_received_time_o = self.chatsModel.data(last_message_received_time_index)
+                create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message["CreateTime"]) if message["CreateTime"] else time.localtime())
+                if last_message_received_time_o:
+                    self.chatsModel.setData(last_message_received_time_index, create_time)
+                else:
+                    last_message_received_time_item = QtGui.QStandardItem(create_time)
+                    self.chatsModel.setItem(row, WeChatWin.LAST_MESSAGE_RECEIVED_TIME_CELL, last_message_received_time_item)
+                #update last mesage body
+                last_message_body_index = self.chatsModel.index(row,WeChatWin.LAST_MESSAGE_BODY_CELL)
+                last_message_body_o = self.chatsModel.data(last_message_body_index)
+                if last_message_body_o:
+                    self.chatsModel.setData(last_message_body_index, message["Content"])
+                else:
+                    last_message_body_item = QtGui.QStandardItem(message["Content"])
+                    self.chatsModel.setItem(row, WeChatWin.LAST_MESSAGE_BODY_CELL, last_message_body_item)
                 #提昇from_user_name在會話列表中的位置
                 #move this row to the top of the sessions
                 taked_row = self.chatsModel.takeRow(row)

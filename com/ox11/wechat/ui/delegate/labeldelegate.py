@@ -141,7 +141,7 @@ class LabelDelegate(QStyledItemDelegate):
                 painter.setPen(red)
                 painter.setBrush(red)
                 
-                msg_count_x = rect_x + LabelDelegate.HEAD_IMG_WIDTH + 2.5
+                msg_count_x = rect_x + LabelDelegate.HEAD_IMG_WIDTH + 1
                 
                 if msgCount >= 10 and msgCount < 100:
                     msg_count_x = msg_count_x - 0.5
